@@ -33,6 +33,12 @@ namespace Kogane
 		public IReadOnlyCollection<Sprite>               CachedSprites => m_table.Values;
 
 		//================================================================================
+		// デリゲート(static)
+		//================================================================================
+		public static Action<SpriteAtlasCacher>         OnNullReferenceSpriteAtlas { get; set; }
+		public static Action<SpriteAtlasCacher, string> OnNullReferenceSprite      { get; set; }
+
+		//================================================================================
 		// 関数
 		//================================================================================
 		/// <summary>
@@ -60,11 +66,29 @@ namespace Kogane
 		/// </summary>
 		public Sprite GetSprite( string spriteName )
 		{
-			if ( m_spriteAtlas == null ) return null;
+			if ( m_spriteAtlas == null )
+			{
+				OnNullReferenceSpriteAtlas?.Invoke( this );
+				return null;
+			}
 
-			if ( m_table.TryGetValue( spriteName, out var sprite ) ) return sprite;
+			if ( m_table.TryGetValue( spriteName, out var sprite ) )
+			{
+				if ( sprite == null )
+				{
+					OnNullReferenceSprite?.Invoke( this, spriteName );
+				}
+
+				return sprite;
+			}
 
 			sprite = m_spriteAtlas.GetSprite( spriteName );
+
+			if ( sprite == null )
+			{
+				OnNullReferenceSprite?.Invoke( this, spriteName );
+			}
+
 			m_table.Add( spriteName, sprite );
 			return sprite;
 		}
@@ -74,6 +98,12 @@ namespace Kogane
 		/// </summary>
 		public void CacheAll()
 		{
+			if ( m_spriteAtlas == null )
+			{
+				OnNullReferenceSpriteAtlas?.Invoke( this );
+				return;
+			}
+
 			var sprites = new Sprite[m_spriteAtlas.spriteCount];
 			m_spriteAtlas.GetSprites( sprites );
 
